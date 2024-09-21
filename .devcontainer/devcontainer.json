@@ -1,0 +1,15 @@
+{
+	"name": "Node.js & TypeScript",
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:0-20",
+
+	"forwardPorts": [
+		3000,
+		3001
+	]
+	// ,
+	// "customizations": {
+	// 	"vscode": {
+	// 		"extensions": []
+	// 	}
+	// }
+}
