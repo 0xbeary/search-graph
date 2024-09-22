@@ -126,7 +126,7 @@ async function confirmPurchase(graphql_query: string) {
       <SystemMessage>
         You have successfully called UNCX Network Subgraph Result:
 
-        
+        {JSON.stringify(res, null)}
 
       </SystemMessage>
     )
@@ -139,7 +139,7 @@ async function confirmPurchase(graphql_query: string) {
           id: nanoid(),
           role: 'system',
           content: `[Resulting GraphQL Request:
-          
+        ${JSON.stringify(res, null)}
           ]`
         }
       ]
