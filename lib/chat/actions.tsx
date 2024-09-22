@@ -49,10 +49,11 @@ import { auth } from '@/auth'
 
 
 
-const getData = async (query: string) => {
+const getData = async (query: string, protocol: string) => {
   let graphEndpointS = process.env.GRAPH_ENDPOINT
 
-  let graphEndpoint = graphEndpointS + 'H9ZXC11AKM4q7mfUeqFqmENFfYhrenkJMi45i8Va2ww2'
+  let graphEndpoint = graphEndpointS + ((protocol === 'UNCX Network') ? 'H9ZXC11AKM4q7mfUeqFqmENFfYhrenkJMi45i8Va2ww2' :
+  '5zvR82QoaXYFyDEKLZ9t6v9adgnptxYpKpSbxtgVENFV')
 
 
   const eth_url = graphEndpoint
@@ -77,7 +78,7 @@ const getData = async (query: string) => {
 }
 
 
-async function confirmPurchase(graphql_query: string) {
+async function confirmPurchase(graphql_query: string, protocol: string) {
   'use server'
 
   const aiState = getMutableAIState<typeof AI>()
@@ -88,7 +89,7 @@ async function confirmPurchase(graphql_query: string) {
     <div className="inline-flex items-start gap-1 md:items-center">
       {spinner}
       <p className="mb-2">
-        Calling UNCX Network Subgraph...
+        Calling {protocol}...
       </p>
     </div>
   )
@@ -102,21 +103,21 @@ async function confirmPurchase(graphql_query: string) {
       <div className="inline-flex items-start gap-1 md:items-center">
         {spinner}
         <p className="mb-2">
-          Calling UNCX Network Subgraph... working on it...
+          Calling {protocol}... working on it...
         </p>
       </div>
     )
 
     // await sleep(1000)
 
-    let res = await getData(graphql_query)
+    let res = await getData(graphql_query, protocol)
 
     console.log(res, ' res');
 
     purchasing.done(
       <div>
         <p className="mb-2">
-          You have successfully called UNCX Network Subgraph
+          You have successfully called {protocol}
 
         </p>
       </div>
@@ -124,7 +125,7 @@ async function confirmPurchase(graphql_query: string) {
 
     systemMessage.done(
       <SystemMessage>
-        You have successfully called UNCX Network Subgraph Result:
+        You have successfully called {protocol} Result:
 
         {JSON.stringify(res, null)}
 
@@ -187,7 +188,8 @@ async function submitUserMessage(content: string) {
     If the user asks to visualise the request -
     call \`visualise_data\` to show the execute visualise UI to show the visualise UI.
     If the user asks to execute the request -
-    call \`execute_request\` to show the execute request UI to show the execute UI.
+    call \`execute_request\` to show the execute request UI to show the execute UI. The user might ask data
+    from different protocols. For example UNCX Network and Uniswap V3.
     
 
     If the user might ask a specific question about the data fetched or the protocol it was fetched from. 
@@ -195,7 +197,8 @@ async function submitUserMessage(content: string) {
     
     At the end of the prompt you will see 2 extra sections:
     
-    - "Context" - this is the information about the protocol the user is asking. It should provide an overview of the protocol functionality and will
+    - "Context" - this is the information about the protocol the user might be asking. There are multiple protocols to choose from. 
+    It should provide an overview of the protocol functionality and will
     help you communicate relevant information with the user.
     - "Schema" - this is a GraphQL schema uploaded by the developer of the protocol. The GraphQL syntax used should be compatible with the Graph Protocol's specification. 
     Use the comments from the schema to understand the meaning of the request. Use the entities to construct a GraphQL query that would 
@@ -214,6 +217,11 @@ async function submitUserMessage(content: string) {
     Create your token, secure your LP with our liquidity lockers, 
     vest your supply according to your tokenomics and create farming/staking 
     incentives with customisable rewards.
+
+
+
+    Uniswap V3 is a decentralised AMM with custom liquidity ranges.
+
 
     Schema:
     
@@ -1330,6 +1338,670 @@ async function submitUserMessage(content: string) {
       include: [{ entity: "Wallet", fields: [{ name: "id" }] }]
     )
 
+
+type Factory @entity {
+  # factory address
+  id: ID!
+  # amount of pools created
+  poolCount: BigInt!
+  # amoutn of transactions all time
+  txCount: BigInt!
+  # total volume all time in derived USD
+  totalVolumeUSD: BigDecimal!
+  # total volume all time in derived ETH
+  totalVolumeETH: BigDecimal!
+  # all volume even through less reliable USD values
+  untrackedVolumeUSD: BigDecimal!
+  # total swap fees all time in USD
+  totalFeesUSD: BigDecimal!
+  # total swap fees all time in USD
+  totalFeesETH: BigDecimal!
+  # TVL derived in USD
+  totalValueLockedUSD: BigDecimal!
+  # TVL derived in ETH
+  totalValueLockedETH: BigDecimal!
+  # TVL derived in USD untracked
+  totalValueLockedUSDUntracked: BigDecimal!
+  # TVL derived in ETH untracked
+  totalValueLockedETHUntracked: BigDecimal!
+  # current owner of the factory
+  owner: ID!
+
+  # TODO: # used for optimism only, flag if backfill complete
+  # TODO: populated: Boolean
+}
+
+# stores for USD calculations
+type Bundle @entity {
+  id: ID!
+  # price of ETH in usd
+  ethPriceUSD: BigDecimal!
+}
+
+type Token @entity {
+  # token address
+  id: ID!
+  # token symbol
+  symbol: String!
+  # token name
+  name: String!
+  # token decimals
+  decimals: BigInt!
+  # token total supply
+  totalSupply: BigInt!
+  # volume in token units
+  volume: BigDecimal!
+  # volume in derived USD
+  volumeUSD: BigDecimal!
+  # volume in USD even on pools with less reliable USD values
+  untrackedVolumeUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # transactions across all pools that include this token
+  txCount: BigInt!
+  # number of pools containing this token
+  poolCount: BigInt!
+  # liquidity across all pools in token units
+  totalValueLocked: BigDecimal!
+  # liquidity across all pools in derived USD
+  totalValueLockedUSD: BigDecimal!
+  # TVL derived in USD untracked
+  totalValueLockedUSDUntracked: BigDecimal!
+  # derived price in ETH
+  derivedETH: BigDecimal!
+  # pools token is in that are white listed for USD pricing
+  whitelistPools: [Pool!]!
+  # derived fields
+  tokenDayData: [TokenDayData!]! @derivedFrom(field: "token")
+}
+
+type Pool @entity {
+  # pool address
+  id: ID!
+  # creation
+  createdAtTimestamp: BigInt!
+  # block pool was created at
+  createdAtBlockNumber: BigInt!
+  # token0
+  token0: Token!
+  # token1
+  token1: Token!
+  # fee amount
+  feeTier: BigInt!
+  # in range liquidity
+  liquidity: BigInt!
+  # current price tracker
+  sqrtPrice: BigInt!
+  # tracker for global fee growth
+  feeGrowthGlobal0X128: BigInt!
+  # tracker for global fee growth
+  feeGrowthGlobal1X128: BigInt!
+  # token0 per token1
+  token0Price: BigDecimal!
+  # token1 per token0
+  token1Price: BigDecimal!
+  # current tick
+  tick: BigInt
+  # current observation index
+  observationIndex: BigInt!
+  # all time token0 swapped
+  volumeToken0: BigDecimal!
+  # all time token1 swapped
+  volumeToken1: BigDecimal!
+  # all time USD swapped
+  volumeUSD: BigDecimal!
+  # all time USD swapped, unfiltered for unreliable USD pools
+  untrackedVolumeUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # all time number of transactions
+  txCount: BigInt!
+  # total token 0 across all ticks
+  totalValueLockedToken0: BigDecimal!
+  # total token 1 across all ticks
+  totalValueLockedToken1: BigDecimal!
+  # TVL derived ETH
+  totalValueLockedETH: BigDecimal!
+  # TVL USD
+  totalValueLockedUSD: BigDecimal!
+  # TVL derived in ETH untracked
+  totalValueLockedETHUntracked: BigDecimal!
+  # TVL derived in USD untracked
+  totalValueLockedUSDUntracked: BigDecimal!
+  # all time fees collected token0
+  collectedFeesToken0: BigDecimal!
+  # all time fees collected token1
+  collectedFeesToken1: BigDecimal!
+  # all time fees collected derived USD
+  collectedFeesUSD: BigDecimal!
+  # Fields used to help derived relationship
+  liquidityProviderCount: BigInt! # used to detect new exchanges
+  # hourly snapshots of pool data
+  poolHourData: [PoolHourData!]! @derivedFrom(field: "pool")
+  # daily snapshots of pool data
+  poolDayData: [PoolDayData!]! @derivedFrom(field: "pool")
+  # derived fields
+  mints: [Mint!]! @derivedFrom(field: "pool")
+  burns: [Burn!]! @derivedFrom(field: "pool")
+  swaps: [Swap!]! @derivedFrom(field: "pool")
+  collects: [Collect!]! @derivedFrom(field: "pool")
+  ticks: [Tick!]! @derivedFrom(field: "pool")
+}
+
+type Tick @entity {
+  # format: <pool address>#<tick index>
+  id: ID!
+  # pool address
+  poolAddress: String
+  # tick index
+  tickIdx: BigInt!
+  # created time
+  createdAtTimestamp: BigInt!
+  # created block
+  createdAtBlockNumber: BigInt!
+  # pointer to pool
+  pool: Pool!
+  # total liquidity pool has as tick lower or upper
+  liquidityGross: BigInt!
+  # how much liquidity changes when tick crossed
+  liquidityNet: BigInt!
+  # calculated price of token0 of tick within this pool - constant
+  price0: BigDecimal!
+  # calculated price of token1 of tick within this pool - constant
+  price1: BigDecimal!
+  # lifetime volume of token0 with this tick in range
+  volumeToken0: BigDecimal!
+  # lifetime volume of token1 with this tick in range
+  volumeToken1: BigDecimal!
+  # lifetime volume in derived USD with this tick in range
+  volumeUSD: BigDecimal!
+  # lifetime volume in untracked USD with this tick in range
+  untrackedVolumeUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # all time collected fees in token0
+  collectedFeesToken0: BigDecimal!
+  # all time collected fees in token1
+  collectedFeesToken1: BigDecimal!
+  # all time collected fees in USD
+  collectedFeesUSD: BigDecimal!
+  # Fields used to help derived relationship
+  liquidityProviderCount: BigInt! # used to detect new exchanges
+  # derived fields
+  # swaps: [Swap!]! @derivedFrom(field: "tick")
+  # vars needed for fee computation
+  feeGrowthOutside0X128: BigInt!
+  feeGrowthOutside1X128: BigInt!
+}
+
+type Position @entity {
+  # Positions created through NonfungiblePositionManager
+  # NFT token id
+  id: ID!
+  # owner of the NFT
+  owner: Bytes!
+  # pool position is within
+  pool: Pool!
+  # allow indexing by tokens
+  token0: Token!
+  # allow indexing by tokens
+  token1: Token!
+  # lower tick of the position
+  tickLower: Tick!
+  # upper tick of the position
+  tickUpper: Tick!
+  # total position liquidity
+  liquidity: BigInt!
+  # amount of token 0 ever deposited to position
+  depositedToken0: BigDecimal!
+  # amount of token 1 ever deposited to position
+  depositedToken1: BigDecimal!
+  # amount of token 0 ever withdrawn from position (without fees)
+  withdrawnToken0: BigDecimal!
+  # amount of token 1 ever withdrawn from position (without fees)
+  withdrawnToken1: BigDecimal!
+  # all time collected fees in token0
+  collectedFeesToken0: BigDecimal!
+  # all time collected fees in token1
+  collectedFeesToken1: BigDecimal!
+  # tx in which the position was initialized
+  transaction: Transaction!
+  # vars needed for fee computation
+  feeGrowthInside0LastX128: BigInt!
+  feeGrowthInside1LastX128: BigInt!
+}
+
+type PositionSnapshot @entity {
+  # <NFT token id>#<block number>
+  id: ID!
+  # owner of the NFT
+  owner: Bytes!
+  # pool the position is within
+  pool: Pool!
+  # position of which the snap was taken of
+  position: Position!
+  # block in which the snap was created
+  blockNumber: BigInt!
+  # timestamp of block in which the snap was created
+  timestamp: BigInt!
+  # total position liquidity
+  liquidity: BigInt!
+  # amount of token 0 ever deposited to position
+  depositedToken0: BigDecimal!
+  # amount of token 1 ever deposited to position
+  depositedToken1: BigDecimal!
+  # amount of token 0 ever withdrawn from position (without fees)
+  withdrawnToken0: BigDecimal!
+  # amount of token 1 ever withdrawn from position (without fees)
+  withdrawnToken1: BigDecimal!
+  # all time collected fees in token0
+  collectedFeesToken0: BigDecimal!
+  # all time collected fees in token1
+  collectedFeesToken1: BigDecimal!
+  # tx in which the snapshot was initialized
+  transaction: Transaction!
+  # internal vars needed for fee computation
+  feeGrowthInside0LastX128: BigInt!
+  feeGrowthInside1LastX128: BigInt!
+}
+
+type Transaction @entity(immutable: true) {
+  # txn hash
+  id: ID!
+  # block txn was included in
+  blockNumber: BigInt!
+  # timestamp txn was confirmed
+  timestamp: BigInt!
+  # gas used during txn execution
+  gasUsed: BigInt!
+  gasPrice: BigInt!
+  # derived values
+  mints: [Mint]! @derivedFrom(field: "transaction")
+  burns: [Burn]! @derivedFrom(field: "transaction")
+  swaps: [Swap]! @derivedFrom(field: "transaction")
+  flashed: [Flash]! @derivedFrom(field: "transaction")
+  collects: [Collect]! @derivedFrom(field: "transaction")
+}
+
+type Mint @entity (immutable: true) {
+  # transaction hash + "#" + index in mints Transaction array
+  id: ID!
+  # which txn the mint was included in
+  transaction: Transaction!
+  # time of txn
+  timestamp: BigInt!
+  # pool position is within
+  pool: Pool!
+  # allow indexing by tokens
+  token0: Token!
+  # allow indexing by tokens
+  token1: Token!
+  # owner of position where liquidity minted to
+  owner: Bytes!
+  # the address that minted the liquidity
+  sender: Bytes
+  # txn origin
+  origin: Bytes! # the EOA that initiated the txn
+  # amount of liquidity minted
+  amount: BigInt!
+  # amount of token 0 minted
+  amount0: BigDecimal!
+  # amount of token 1 minted
+  amount1: BigDecimal!
+  # derived amount based on available prices of tokens
+  amountUSD: BigDecimal
+  # lower tick of the position
+  tickLower: BigInt!
+  # upper tick of the position
+  tickUpper: BigInt!
+  # order within the txn
+  logIndex: BigInt
+}
+
+type Burn @entity (immutable: true) {
+  # transaction hash + "#" + index in mints Transaction array
+  id: ID!
+  # txn burn was included in
+  transaction: Transaction!
+  # pool position is within
+  pool: Pool!
+  # allow indexing by tokens
+  token0: Token!
+  # allow indexing by tokens
+  token1: Token!
+  # need this to pull recent txns for specific token or pool
+  timestamp: BigInt!
+  # owner of position where liquidity was burned
+  owner: Bytes
+  # txn origin
+  origin: Bytes! # the EOA that initiated the txn
+  # amouny of liquidity burned
+  amount: BigInt!
+  # amount of token 0 burned
+  amount0: BigDecimal!
+  # amount of token 1 burned
+  amount1: BigDecimal!
+  # derived amount based on available prices of tokens
+  amountUSD: BigDecimal
+  # lower tick of position
+  tickLower: BigInt!
+  # upper tick of position
+  tickUpper: BigInt!
+  # position within the transactions
+  logIndex: BigInt
+}
+
+type Swap @entity (immutable: true) {
+  # transaction hash + "#" + index in swaps Transaction array
+  id: ID!
+  # pointer to transaction
+  transaction: Transaction!
+  # timestamp of transaction
+  timestamp: BigInt!
+  # pool swap occured within
+  pool: Pool!
+  # allow indexing by tokens
+  token0: Token!
+  # allow indexing by tokens
+  token1: Token!
+  # sender of the swap
+  sender: Bytes!
+  # recipient of the swap
+  recipient: Bytes!
+  # txn origin
+  origin: Bytes! # the EOA that initiated the txn
+  # delta of token0 swapped
+  amount0: BigDecimal!
+  # delta of token1 swapped
+  amount1: BigDecimal!
+  # derived info
+  amountUSD: BigDecimal!
+  # The sqrt(price) of the pool after the swap, as a Q64.96
+  sqrtPriceX96: BigInt!
+  # the tick after the swap
+  tick: BigInt!
+  # index within the txn
+  logIndex: BigInt
+}
+
+type Collect @entity {
+  # transaction hash + "#" + index in collect Transaction array
+  id: ID!
+  # pointer to txn
+  transaction: Transaction!
+  # timestamp of event
+  timestamp: BigInt!
+  # pool collect occured within
+  pool: Pool!
+  # owner of position collect was performed on
+  owner: Bytes
+  # amount of token0 collected
+  amount0: BigDecimal!
+  # amount of token1 collected
+  amount1: BigDecimal!
+  # derived amount based on available prices of tokens
+  amountUSD: BigDecimal
+  # lower tick of position
+  tickLower: BigInt!
+  # uppper tick of position
+  tickUpper: BigInt!
+  # index within the txn
+  logIndex: BigInt
+}
+
+type Flash @entity {
+  # transaction hash + "-" + index in collect Transaction array
+  id: ID!
+  # pointer to txn
+  transaction: Transaction!
+  # timestamp of event
+  timestamp: BigInt!
+  # pool collect occured within
+  pool: Pool!
+  # sender of the flash
+  sender: Bytes!
+  # recipient of the flash
+  recipient: Bytes!
+  # amount of token0 flashed
+  amount0: BigDecimal!
+  # amount of token1 flashed
+  amount1: BigDecimal!
+  # derived amount based on available prices of tokens
+  amountUSD: BigDecimal!
+  # amount token0 paid for flash
+  amount0Paid: BigDecimal!
+  # amount token1 paid for flash
+  amount1Paid: BigDecimal!
+  # index within the txn
+  logIndex: BigInt
+}
+
+# Data accumulated and condensed into day stats for all of Uniswap
+type UniswapDayData @entity {
+  # timestamp rounded to current day by dividing by 86400
+  id: ID!
+  # timestamp rounded to current day by dividing by 86400
+  date: Int!
+  # total daily volume in Uniswap derived in terms of ETH
+  volumeETH: BigDecimal!
+  # total daily volume in Uniswap derived in terms of USD
+  volumeUSD: BigDecimal!
+  # total daily volume in Uniswap derived in terms of USD untracked
+  volumeUSDUntracked: BigDecimal!
+  # tvl in terms of USD
+  totalValueLockedUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # number of daily transactions
+  txCount: BigInt!
+}
+
+# Data accumulated and condensed into day stats for each pool
+type PoolDayData @entity {
+  # timestamp rounded to current day by dividing by 86400
+  id: ID!
+  # timestamp rounded to current day by dividing by 86400
+  date: Int!
+  # pointer to pool
+  pool: Pool!
+  # in range liquidity at end of period
+  liquidity: BigInt!
+  # current price tracker at end of period
+  sqrtPrice: BigInt!
+  # price of token0 - derived from sqrtPrice
+  token0Price: BigDecimal!
+  # price of token1 - derived from sqrtPrice
+  token1Price: BigDecimal!
+  # current tick at end of period
+  tick: BigInt
+  # tracker for global fee growth
+  feeGrowthGlobal0X128: BigInt!
+  # tracker for global fee growth
+  feeGrowthGlobal1X128: BigInt!
+  # TVL derived in USD at end of period
+  totalValueLockedUSD: BigDecimal!
+  # volume in token0
+  volumeToken0: BigDecimal!
+  # volume in token1
+  volumeToken1: BigDecimal!
+  # volume in USD
+  volumeUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # numebr of transactions during period
+  txCount: BigInt!
+  # opening price of token0
+  open: BigDecimal!
+  # high price of token0
+  high: BigDecimal!
+  # low price of token0
+  low: BigDecimal!
+  # close price of token0
+  close: BigDecimal!
+}
+
+# hourly stats tracker for pool
+type PoolHourData @entity {
+  # format: <pool address>-<timestamp>
+  id: ID!
+  # unix timestamp for start of hour
+  periodStartUnix: Int!
+  # pointer to pool
+  pool: Pool!
+  # in range liquidity at end of period
+  liquidity: BigInt!
+  # current price tracker at end of period
+  sqrtPrice: BigInt!
+  # price of token0 - derived from sqrtPrice
+  token0Price: BigDecimal!
+  # price of token1 - derived from sqrtPrice
+  token1Price: BigDecimal!
+  # current tick at end of period
+  tick: BigInt
+  # tracker for global fee growth
+  feeGrowthGlobal0X128: BigInt!
+  # tracker for global fee growth
+  feeGrowthGlobal1X128: BigInt!
+  # tvl derived in USD at end of period
+  totalValueLockedUSD: BigDecimal!
+  # volume in token0
+  volumeToken0: BigDecimal!
+  # volume in token1
+  volumeToken1: BigDecimal!
+  # volume in USD
+  volumeUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # numebr of transactions during period
+  txCount: BigInt!
+  # opening price of token0
+  open: BigDecimal!
+  # high price of token0
+  high: BigDecimal!
+  # low price of token0
+  low: BigDecimal!
+  # close price of token0
+  close: BigDecimal!
+}
+
+### Learnings: need to engineer a different solution for the TickTimeData
+###  currently, we need to store the tick themselves to be able to get the
+###  tick updated events and update the current values of the ticks
+###  This causes issues with managing too much memory and causes the store to be too big.
+
+#type TickHourData @entity {
+#  # format: <pool address>-<tick index>-<timestamp>
+#  id: ID!
+#  # unix timestamp for start of hour
+#  periodStartUnix: Int!
+#  # pointer to pool
+#  pool: Pool!
+#  # pointer to tick
+#  tick: Tick!
+#  # total liquidity pool has as tick lower or upper at end of period
+#  liquidityGross: BigInt!
+#  # how much liquidity changes when tick crossed at end of period
+#  liquidityNet: BigInt!
+#  # hourly volume of token0 with this tick in range
+#  volumeToken0: BigDecimal!
+#  # hourly volume of token1 with this tick in range
+#  volumeToken1: BigDecimal!
+#  # hourly volume in derived USD with this tick in range
+#  volumeUSD: BigDecimal!
+#  # fees in USD
+#  feesUSD: BigDecimal!
+#}
+
+# Data accumulated and condensed into day stats for each exchange
+# Note: this entity gets saved only if there is a change during the day
+#type TickDayData @entity {
+#  # format: <pool address>-<tick index>-<timestamp>
+#  id: ID!
+#  # timestamp rounded to current day by dividing by 86400
+#  date: Int!
+#  # pointer to pool
+#  pool: Pool!
+#  # pointer to tick
+#  tick: Tick!
+#  # total liquidity pool has as tick lower or upper at end of period
+#  liquidityGross: BigInt!
+#  # how much liquidity changes when tick crossed at end of period
+#  liquidityNet: BigInt!
+#  # hourly volume of token0 with this tick in range
+#  volumeToken0: BigDecimal!
+#  # hourly volume of token1 with this tick in range
+#  volumeToken1: BigDecimal!
+#  # hourly volume in derived USD with this tick in range
+#  volumeUSD: BigDecimal!
+#  # fees in USD
+#  feesUSD: BigDecimal!
+#  # vars needed for fee computation
+#  feeGrowthOutside0X128: BigInt!
+#  feeGrowthOutside1X128: BigInt!
+#}
+
+type TokenDayData @entity {
+  # token address concatendated with date
+  id: ID!
+  # timestamp rounded to current day by dividing by 86400
+  date: Int!
+  # pointer to token
+  token: Token!
+  # volume in token units
+  volume: BigDecimal!
+  # volume in derived USD
+  volumeUSD: BigDecimal!
+  # volume in USD even on pools with less reliable USD values
+  volumeUSDUntracked: BigDecimal!
+  # liquidity across all pools in token units
+  totalValueLocked: BigDecimal!
+  # liquidity across all pools in derived USD
+  totalValueLockedUSD: BigDecimal!
+  # price at end of period in USD
+  priceUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # opening price USD
+  open: BigDecimal!
+  # high price USD
+  high: BigDecimal!
+  # low price USD
+  low: BigDecimal!
+  # close price USD
+  close: BigDecimal!
+}
+
+type TokenHourData @entity {
+  # token address concatenated with date
+  id: ID!
+  # unix timestamp for start of hour
+  periodStartUnix: Int!
+  # pointer to token
+  token: Token!
+  # volume in token units
+  volume: BigDecimal!
+  # volume in derived USD
+  volumeUSD: BigDecimal!
+  # volume in USD even on pools with less reliable USD values
+  volumeUSDUntracked: BigDecimal!
+  # liquidity across all pools in token units
+  totalValueLocked: BigDecimal!
+  # liquidity across all pools in derived USD
+  totalValueLockedUSD: BigDecimal!
+  # price at end of period in USD
+  priceUSD: BigDecimal!
+  # fees in USD
+  feesUSD: BigDecimal!
+  # opening price USD
+  open: BigDecimal!
+  # high price USD
+  high: BigDecimal!
+  # low price USD
+  low: BigDecimal!
+  # close price USD
+  close: BigDecimal!
+}
+
    `,
     messages: [
       ...aiState.get().messages.map((message: any) => ({
@@ -1497,18 +2169,18 @@ async function submitUserMessage(content: string) {
             .describe(
               'GraphQL query that will be executed'
             )
-          //   ,
-          // price: z.number().describe('The price of the stock.'),
+            ,
+          protocol: z
+          .string().describe('The protocol thats being called.'),
           // numberOfShares: z
           //   .number()
-          //   .optional()
           //   .describe(
-          //     'The **number of shares** for a stock or currency to purchase. Can be optional if the user did not specify it.'
+          //     'The protocol that the user calls when asking for data'
           //   )
         }
         )
         ,
-        generate: async function* ({ graphql_query }) {
+        generate: async function* ({ graphql_query, protocol }) {
           const toolCallId = nanoid()
 
           // if (numberOfShares <= 0 || numberOfShares > 1000) {
@@ -1568,7 +2240,7 @@ async function submitUserMessage(content: string) {
                       type: 'tool-call',
                       toolName: 'executeRequest',
                       toolCallId,
-                      args: { graphql_query }
+                      args: { graphql_query, protocol }
                     }
                   ]
                 },
@@ -1581,7 +2253,7 @@ async function submitUserMessage(content: string) {
                       toolName: 'executeRequest',
                       toolCallId,
                       result: {
-                        graphql_query
+                        graphql_query, protocol
                       }
                     }
                   ]
@@ -1594,6 +2266,7 @@ async function submitUserMessage(content: string) {
                 <Purchase
                   props={{
                     graphql_query,
+                    protocol,
                     status: 'requires_action'
                   }}
                 />

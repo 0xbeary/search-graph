@@ -8,11 +8,12 @@ import type { AI } from '@/lib/chat/actions'
 
 interface Purchase {
   graphql_query: string,
+  protocol: string,
   status: 'requires_action' | 'completed' | 'expired'
 }
 
 export function Purchase({
-  props: { graphql_query, status = 'expired' }
+  props: { graphql_query, protocol, status = 'expired' }
 }: {
   props: Purchase
 }) {
@@ -62,7 +63,10 @@ export function Purchase({
 
     
     <div className="p-4 text-green-400 border rounded-xl bg-zinc-950">
+      <>
       {graphql_query}
+      </>
+
       {/* <div className="inline-block float-right px-2 py-1 text-xs rounded-full bg-white/10">
         +1.23% ↑
       </div> */}
@@ -122,7 +126,7 @@ export function Purchase({
           <button
             className="w-full px-4 py-2 mt-6 font-bold bg-green-400 rounded-lg text-zinc-900 hover:bg-green-500"
             onClick={async () => {
-              const response = await confirmPurchase(graphql_query)
+              const response = await confirmPurchase(graphql_query, protocol)
               setPurchasingUI(response.purchasingUI)
 
               // Insert a new system message to the UI.
