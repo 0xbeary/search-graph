@@ -9,5 +9,9 @@ module.exports = {
         pathname: '**'
       }
     ]
-  }
+  },
+  // edit: updated to new key. Was previously `allowedForwardedHosts`
+  experimental: { serverActions: { allowedOrigins: [ "localhost:3000", "https://opulent-space-lamp-jgxx447649xcp7j7.github.dev", ], }, }
+  // allowedOrigins: ["localhost:3000", 'https://opulent-space-lamp-jgxx447649xcp7j7.github.dev']
+
 }
