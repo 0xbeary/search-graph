@@ -36,15 +36,52 @@ import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 
+// const result = await fetch(graphEndpoint, {
+//   method: 'POST',
+//   headers: {
+//     'Content-Type': 'application/json',
+//     Accept: 'application/json',
+//   },
+//   body: JSON.stringify({
+//     query: graphql_query,
+//   }),
+// })
+
+
+
+const getData = async (query: string) => {
+  let graphEndpointS = process.env.GRAPH_ENDPOINT
+
+  let graphEndpoint = graphEndpointS + 'H9ZXC11AKM4q7mfUeqFqmENFfYhrenkJMi45i8Va2ww2'
+
+
+  const eth_url = graphEndpoint
+  const result = await fetch(eth_url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      query: query,
+    }),
+  })
+
+  // error handle
+  if (!result.ok) {
+    // This will activate the closest `error.js` Error Boundary
+    // throw new Error('Failed to fetch poolTableSuspense data');
+    return null
+  }
+  return result.json()
+}
+
+
 async function confirmPurchase(graphql_query: string) {
   'use server'
 
   const aiState = getMutableAIState<typeof AI>()
 
-
-  let graphEndpointS = process.env.GRAPH_ENDPOINT
-
-  let graphEndpoint = graphEndpointS + 'H9ZXC11AKM4q7mfUeqFqmENFfYhrenkJMi45i8Va2ww2'
 
 
   const purchasing = createStreamableUI(
@@ -72,27 +109,9 @@ async function confirmPurchase(graphql_query: string) {
 
     // await sleep(1000)
 
+    let res = await getData(graphql_query)
 
-    console.log(graphql_query);
-    
-
-    const result = await fetch(graphEndpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        query: graphql_query,
-      }),
-    })
-
-
-    let res = result.json()
-
-    // const result = await response.json();
-
-
+    console.log(res, ' res');
 
     purchasing.done(
       <div>
@@ -107,7 +126,7 @@ async function confirmPurchase(graphql_query: string) {
       <SystemMessage>
         You have successfully called UNCX Network Subgraph Result:
 
-        {res}
+        
 
       </SystemMessage>
     )
