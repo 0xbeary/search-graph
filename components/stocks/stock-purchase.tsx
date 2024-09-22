@@ -7,18 +7,15 @@ import { formatNumber } from '@/lib/utils'
 import type { AI } from '@/lib/chat/actions'
 
 interface Purchase {
-  numberOfShares?: number
-  symbol: string
-  price: number
+  graphql_query: string,
   status: 'requires_action' | 'completed' | 'expired'
 }
 
 export function Purchase({
-  props: { numberOfShares, symbol, price, status = 'expired' }
+  props: { graphql_query, status = 'expired' }
 }: {
   props: Purchase
 }) {
-  const [value, setValue] = useState(numberOfShares || 100)
   const [purchasingUI, setPurchasingUI] = useState<null | React.ReactNode>(null)
   const [aiState, setAIState] = useAIState<typeof AI>()
   const [, setMessages] = useUIState<typeof AI>()
@@ -29,48 +26,53 @@ export function Purchase({
 
   // Whenever the slider changes, we need to update the local value state and the history
   // so LLM also knows what's going on.
-  function onSliderChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const newValue = Number(e.target.value)
-    setValue(newValue)
+  // function onSliderChange(e: React.ChangeEvent<HTMLInputElement>) {
+  //   const newValue = Number(e.target.value)
+  //   setValue(newValue)
 
-    // Insert a hidden history info to the list.
-    const message = {
-      role: 'system' as const,
-      content: `[User has changed to purchase ${newValue} shares of ${name}. Total cost: $${(
-        newValue * price
-      ).toFixed(2)}]`,
+  //   // Insert a hidden history info to the list.
+  //   const message = {
+  //     role: 'system' as const,
+  //     content: `[User has changed to purchase ${newValue} shares of ${name}. Total cost: $${(
+  //       newValue * price
+  //     ).toFixed(2)}]`,
 
-      // Identifier of this UI component, so we don't insert it many times.
-      id
-    }
+  //     // Identifier of this UI component, so we don't insert it many times.
+  //     id
+  //   }
 
-    // If last history state is already this info, update it. This is to avoid
-    // adding every slider change to the history.
-    if (aiState.messages[aiState.messages.length - 1]?.id === id) {
-      setAIState({
-        ...aiState,
-        messages: [...aiState.messages.slice(0, -1), message]
-      })
+  //   // If last history state is already this info, update it. This is to avoid
+  //   // adding every slider change to the history.
+  //   if (aiState.messages[aiState.messages.length - 1]?.id === id) {
+  //     setAIState({
+  //       ...aiState,
+  //       messages: [...aiState.messages.slice(0, -1), message]
+  //     })
 
-      return
-    }
+  //     return
+  //   }
 
-    // If it doesn't exist, append it to history.
-    setAIState({ ...aiState, messages: [...aiState.messages, message] })
-  }
+  //   // If it doesn't exist, append it to history.
+  //   setAIState({ ...aiState, messages: [...aiState.messages, message] })
+  // }
 
+
+  
   return (
+
+    
     <div className="p-4 text-green-400 border rounded-xl bg-zinc-950">
-      <div className="inline-block float-right px-2 py-1 text-xs rounded-full bg-white/10">
+      {graphql_query}
+      {/* <div className="inline-block float-right px-2 py-1 text-xs rounded-full bg-white/10">
         +1.23% ↑
-      </div>
-      <div className="text-lg text-zinc-300">{symbol}</div>
-      <div className="text-3xl font-bold">${price}</div>
+      </div> */}
+      {/* <div className="text-lg text-zinc-300">{symbol}</div>
+      <div className="text-3xl font-bold">${price}</div> */}
       {purchasingUI ? (
         <div className="mt-4 text-zinc-200">{purchasingUI}</div>
       ) : status === 'requires_action' ? (
         <>
-          <div className="relative pb-6 mt-6">
+          {/* <div className="relative pb-6 mt-6">
             <p>Shares to purchase</p>
             <input
               id="labels-range-input"
@@ -93,9 +95,9 @@ export function Purchase({
             <span className="absolute text-xs bottom-1 end-0 text-zinc-400">
               1000
             </span>
-          </div>
+          </div> */}
 
-          <div className="mt-6">
+          {/* <div className="mt-6">
             <p>Total cost</p>
             <div className="flex flex-wrap items-center text-xl font-bold sm:items-end sm:gap-2 sm:text-3xl">
               <div className="flex flex-col basis-1/3 tabular-nums sm:basis-auto sm:flex-row sm:items-center sm:gap-2">
@@ -115,12 +117,12 @@ export function Purchase({
                 = <span>{formatNumber(value * price)}</span>
               </div>
             </div>
-          </div>
+          </div> */}
 
           <button
             className="w-full px-4 py-2 mt-6 font-bold bg-green-400 rounded-lg text-zinc-900 hover:bg-green-500"
             onClick={async () => {
-              const response = await confirmPurchase(symbol, price, value)
+              const response = await confirmPurchase(graphql_query)
               setPurchasingUI(response.purchasingUI)
 
               // Insert a new system message to the UI.
@@ -130,17 +132,21 @@ export function Purchase({
               ])
             }}
           >
-            Purchase
+            Execute
           </button>
         </>
       ) : status === 'completed' ? (
-        <p className="mb-2 text-white">
-          You have successfully purchased {value} ${symbol}. Total cost:{' '}
-          {formatNumber(value * price)}
-        </p>
-      ) : status === 'expired' ? (
-        <p className="mb-2 text-white">Your checkout session has expired!</p>
+        <>
+          query results
+        </>
+
+        //   <p className="mb-2 text-white">
+        //     You have successfully purchased {value} ${symbol}. Total cost:{' '}
+        //     {formatNumber(value * price)}
+        //   </p>
+        // ) : status === 'expired' ? (
+        //   <p className="mb-2 text-white">Your checkout session has expired!</p>
+
       ) : null}
-    </div>
-  )
+    </div>)
 }

@@ -36,16 +36,22 @@ import { SpinnerMessage, UserMessage } from '@/components/stocks/message'
 import { Chat, Message } from '@/lib/types'
 import { auth } from '@/auth'
 
-async function confirmPurchase(symbol: string, price: number, amount: number) {
+async function confirmPurchase(graphql_query: string) {
   'use server'
 
   const aiState = getMutableAIState<typeof AI>()
+
+
+  let graphEndpointS = process.env.GRAPH_ENDPOINT
+
+  let graphEndpoint = graphEndpointS + 'H9ZXC11AKM4q7mfUeqFqmENFfYhrenkJMi45i8Va2ww2'
+
 
   const purchasing = createStreamableUI(
     <div className="inline-flex items-start gap-1 md:items-center">
       {spinner}
       <p className="mb-2">
-        Purchasing {amount} ${symbol}...
+        Calling UNCX Network Subgraph...
       </p>
     </div>
   )
@@ -59,26 +65,50 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
       <div className="inline-flex items-start gap-1 md:items-center">
         {spinner}
         <p className="mb-2">
-          Purchasing {amount} ${symbol}... working on it...
+          Calling UNCX Network Subgraph... working on it...
         </p>
       </div>
     )
 
-    await sleep(1000)
+    // await sleep(1000)
+
+
+    console.log(graphql_query);
+    
+
+    const result = await fetch(graphEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        query: graphql_query,
+      }),
+    })
+
+
+    let res = result.json()
+
+    // const result = await response.json();
+
+
 
     purchasing.done(
       <div>
         <p className="mb-2">
-          You have successfully purchased {amount} ${symbol}. Total cost:{' '}
-          {formatNumber(amount * price)}
+          You have successfully called UNCX Network Subgraph
+
         </p>
       </div>
     )
 
     systemMessage.done(
       <SystemMessage>
-        You have purchased {amount} shares of {symbol} at ${price}. Total cost ={' '}
-        {formatNumber(amount * price)}.
+        You have successfully called UNCX Network Subgraph Result:
+
+        {res}
+
       </SystemMessage>
     )
 
@@ -89,9 +119,9 @@ async function confirmPurchase(symbol: string, price: number, amount: number) {
         {
           id: nanoid(),
           role: 'system',
-          content: `[User has purchased ${amount} shares of ${symbol} at ${price}. Total cost = ${
-            amount * price
-          }]`
+          content: `[Resulting GraphQL Request:
+          
+          ]`
         }
       ]
     })
@@ -126,16 +156,6 @@ async function submitUserMessage(content: string) {
   let textStream: undefined | ReturnType<typeof createStreamableValue<string>>
   let textNode: undefined | React.ReactNode
 
-  // Messages inside [] means that it's a UI element or a user event. For example:
-  // - "[Price of GRT = 100]" means that an interface of the price of the GRT token is shown to the user.
-  // - "[User has changed the amount of GRT to 10]" means that the user has changed the amount of GRT to 10 in the UI.
-  
-  // If the user requests purchasing a token, call \`show_stock_purchase_ui\` to show the purchase UI.
-  // If the user just wants the price, call \`show_stock_price\` to show the price.
-  // If you want to show trending tokens, call \`list_stocks\`.
-  // If you want to show events, call \`get_events\`.
-  // If the user wants to sell stock, or complete another impossible task, respond that you are a demo and cannot do that.
-  
 
   // Skip the subgraph lookup step for now
 
@@ -148,7 +168,7 @@ async function submitUserMessage(content: string) {
     If the user asks to visualise the request -
     call \`visualise_data\` to show the execute visualise UI to show the visualise UI.
     If the user asks to execute the request -
-    call \`list_stocks\` to show the execute request UI to show the execute UI.
+    call \`execute_request\` to show the execute request UI to show the execute UI.
     
 
     If the user might ask a specific question about the data fetched or the protocol it was fetched from. 
@@ -1325,66 +1345,68 @@ async function submitUserMessage(content: string) {
       return textNode
     },
     tools: {
-      listStocks: {
-        description: 'List three imaginary stocks that are trending.',
-        parameters: z.object({
-          stocks: z.array(
-            z.object({
-              symbol: z.string().describe('The symbol of the stock'),
-              price: z.number().describe('The price of the stock'),
-              delta: z.number().describe('The change in price of the stock')
-            })
-          )
-        }),
-        generate: async function* ({ stocks }) {
-          yield (
-            <BotCard>
-              <StocksSkeleton />
-            </BotCard>
-          )
+      // executeQuery: {
+      //   description: 'List three imaginary stocks that are trending.',
+      //   parameters: z.object({
+      //     stocks: z.array(
+      //       z.object({
+      //         symbol: z.string().describe('The symbol of the stock'),
+      //         price: z.number().describe('The price of the stock'),
+      //         delta: z.number().describe('The change in price of the stock')
+      //       })
+      //     )
+      //   }),
+      //   generate: async function* ({ stocks }) {
+      //     yield (
+      //       <BotCard>
+      //         <StocksSkeleton />
+      //       </BotCard>
+      //     )
 
-          await sleep(1000)
+      //     let graphEndpoint = process.env['GRAPH_ENDPOINT']
 
-          const toolCallId = nanoid()
+      //     await sleep(1000)
 
-          aiState.done({
-            ...aiState.get(),
-            messages: [
-              ...aiState.get().messages,
-              {
-                id: nanoid(),
-                role: 'assistant',
-                content: [
-                  {
-                    type: 'tool-call',
-                    toolName: 'listStocks',
-                    toolCallId,
-                    args: { stocks }
-                  }
-                ]
-              },
-              {
-                id: nanoid(),
-                role: 'tool',
-                content: [
-                  {
-                    type: 'tool-result',
-                    toolName: 'listStocks',
-                    toolCallId,
-                    result: stocks
-                  }
-                ]
-              }
-            ]
-          })
+      //     const toolCallId = nanoid()
 
-          return (
-            <BotCard>
-              <Stocks props={stocks} />
-            </BotCard>
-          )
-        }
-      },
+      //     aiState.done({
+      //       ...aiState.get(),
+      //       messages: [
+      //         ...aiState.get().messages,
+      //         {
+      //           id: nanoid(),
+      //           role: 'assistant',
+      //           content: [
+      //             {
+      //               type: 'tool-call',
+      //               toolName: 'executeQuery',
+      //               toolCallId,
+      //               args: { stocks }
+      //             }
+      //           ]
+      //         },
+      //         {
+      //           id: nanoid(),
+      //           role: 'tool',
+      //           content: [
+      //             {
+      //               type: 'tool-result',
+      //               toolName: 'executeQuery',
+      //               toolCallId,
+      //               result: stocks
+      //             }
+      //           ]
+      //         }
+      //       ]
+      //     })
+
+      //     return (
+      //       <BotCard>
+      //         <Stocks props={stocks} />
+      //       </BotCard>
+      //     )
+      //   }
+      // },
       visualiseData: {
         description:
           'Get the current stock price of a given stock or currency. Use this to show the price to the user.',
@@ -1418,7 +1440,7 @@ async function submitUserMessage(content: string) {
                 content: [
                   {
                     type: 'tool-call',
-                    toolName: 'showStockPrice',
+                    toolName: 'visualiseData',
                     toolCallId,
                     args: { symbol, price, delta }
                   }
@@ -1430,7 +1452,7 @@ async function submitUserMessage(content: string) {
                 content: [
                   {
                     type: 'tool-result',
-                    toolName: 'showStockPrice',
+                    toolName: 'visualiseData',
                     toolCallId,
                     result: { symbol, price, delta }
                   }
@@ -1446,7 +1468,122 @@ async function submitUserMessage(content: string) {
           )
         }
       },
-      
+
+      executeRequest: {
+        description:
+          'Show the UI to execute a GraphQL request. Use this if the user wants to call the graph.',
+        parameters: z.object({
+          graphql_query: z
+            .string()
+            .describe(
+              'GraphQL query that will be executed'
+            )
+          //   ,
+          // price: z.number().describe('The price of the stock.'),
+          // numberOfShares: z
+          //   .number()
+          //   .optional()
+          //   .describe(
+          //     'The **number of shares** for a stock or currency to purchase. Can be optional if the user did not specify it.'
+          //   )
+        }
+        )
+        ,
+        generate: async function* ({ graphql_query }) {
+          const toolCallId = nanoid()
+
+          // if (numberOfShares <= 0 || numberOfShares > 1000) {
+          //   aiState.done({
+          //     ...aiState.get(),
+          //     messages: [
+          //       ...aiState.get().messages,
+          //       {
+          //         id: nanoid(),
+          //         role: 'assistant',
+          //         content: [
+          //           {
+          //             type: 'tool-call',
+          //             toolName: 'executeRequest',
+          //             toolCallId,
+          //             args: { symbol, price, numberOfShares }
+          //           }
+          //         ]
+          //       },
+          //       {
+          //         id: nanoid(),
+          //         role: 'tool',
+          //         content: [
+          //           {
+          //             type: 'tool-result',
+          //             toolName: 'executeRequest',
+          //             toolCallId,
+          //             result: {
+          //               symbol,
+          //               price,
+          //               numberOfShares,
+          //               status: 'expired'
+          //             }
+          //           }
+          //         ]
+          //       },
+          //       {
+          //         id: nanoid(),
+          //         role: 'system',
+          //         content: `[User has selected an invalid amount]`
+          //       }
+          //     ]
+          //   })
+
+          //   return <BotMessage content={'Invalid amount'} />
+          // } else
+          {
+            aiState.done({
+              ...aiState.get(),
+              messages: [
+                ...aiState.get().messages,
+                {
+                  id: nanoid(),
+                  role: 'assistant',
+                  content: [
+                    {
+                      type: 'tool-call',
+                      toolName: 'executeRequest',
+                      toolCallId,
+                      args: { graphql_query }
+                    }
+                  ]
+                },
+                {
+                  id: nanoid(),
+                  role: 'tool',
+                  content: [
+                    {
+                      type: 'tool-result',
+                      toolName: 'executeRequest',
+                      toolCallId,
+                      result: {
+                        graphql_query
+                      }
+                    }
+                  ]
+                }
+              ]
+            })
+
+            return (
+              <BotCard>
+                <Purchase
+                  props={{
+                    graphql_query,
+                    status: 'requires_action'
+                  }}
+                />
+              </BotCard>
+            )
+          }
+        }
+      },
+
       // getEvents: {
       //   description:
       //     'List funny imaginary events between user highlighted dates that describe stock activity.',
@@ -1591,18 +1728,18 @@ export const getUIStateFromAIState = (aiState: Chat) => {
       display:
         message.role === 'tool' ? (
           message.content.map(tool => {
-            return tool.toolName === 'listStocks' ? (
+            return tool.toolName === 'executeQuery' ? (
               <BotCard>
                 {/* TODO: Infer types based on the tool result*/}
                 {/* @ts-expect-error */}
                 <Stocks props={tool.result} />
               </BotCard>
-            ) : tool.toolName === 'showStockPrice' ? (
+            ) : tool.toolName === 'visualiseData' ? (
               <BotCard>
                 {/* @ts-expect-error */}
                 <Stock props={tool.result} />
               </BotCard>
-            ) : tool.toolName === 'showStockPurchase' ? (
+            ) : tool.toolName === 'executeRequest' ? (
               <BotCard>
                 {/* @ts-expect-error */}
                 <Purchase props={tool.result} />
